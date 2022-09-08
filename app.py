@@ -43,7 +43,8 @@ def classify():
                 # https://stackoverflow.com/a/70167203/8050183
                 "success": True,
                 "file": base64.b64encode(file).decode(),
-                "label": random.choice(classes)
+                "label": random.choice(classes),
+                "percent": 76,
             }
             return json.dumps(response)
         else:
