@@ -26,14 +26,14 @@ def inference(model, lb, files):
     x = (x - x.min()) / (x.max() - x.min())
 
     predictions = model.predict(x)
-
     print("predictions:", predictions)
+    print("lb.classes_:", lb.classes_)
+    
     preds = []
-    for _ in range(x.shape[0]):
-        pred_idx = np.argmax(predictions[0])
-        prob = max(predictions[0])
+    for i in range(x.shape[0]):
+        pred_idx = np.argmax(predictions[i])
+        prob = max(predictions[i])
         label = lb.classes_[pred_idx]
-        preds.append([label, int(prob)])
-        
-    print("preds:", preds)
+        preds.append([label, int(prob * 100)])
+   
     return preds
