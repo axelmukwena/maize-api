@@ -1,61 +1,44 @@
-import json
 import os
 import time
-from itertools import product
-
-import biosppy
-import numpy as np
-from flask import Flask, request, send_file
-from scipy.signal import filtfilt
-from tensorflow.keras.models import load_model
-import base64
+import pickle
+import uvicorn
+import inference
+from tensorflow import keras
+from typing import List
+from fastapi import File, FastAPI
 
 os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices'
 
-app = Flask(__name__)
-VERIFY_MODEL = load_model("model/", compile=False)
-AUTHENTICATE_MODELS = {}
-TEMPLATES = []
-CLASSES = []
-TEMPS = 0
-TRIM = 20
+app = FastAPI()
+
+# Load model and classes
+MODEL = keras.models.load_model("model/", compile=False)
+with open("model/lb.pickle", 'rb') as f:
+    LB = pickle.load(f)
 
 
-def handle_classify(samples):
-    pairs = [[t, s] for t, s in product(TEMPLATES, samples)]
-    pairs = normalize(pairs)
-    t = time.time()
-    ps = VERIFY_MODEL.predict([pairs[:, 0], pairs[:, 1]])  # output looks like [[[1]], [[2]], [[3]]]
-    ps = [i[0][0] for i in ps]
-    print(time.time() - t)
-    return ps
+@app.get("/")
+async def read_root():
+    return {"message": "Welcome from the API"}
 
 
-@app.route("/classify", methods=["POST"])
-def classify():
-    invalid = {"error": "Invalid request."}
-    # ensure the file was properly uploaded to our endpoint
-    if request.method == "POST":
-        if 'file' in request.files:
-            file = request.files['file']
-            classes = ["Maize Streak Virus", "Healthy", "Fall Army Worm", "Unknown"]
-            response = {
-                # https://stackoverflow.com/a/70167203/8050183
-                "success": True,
-                "file": base64.b64encode(file).decode(),
-                "label": random.choice(classes),
-                "percent": 76,
-            }
-            return json.dumps(response)
-        else:
-            return json.dumps({"error": "Data sent is not valid."})
-    return json.dumps(invalid)
+@app.post("/classify")
+async def get_image(files: List[bytes] = File()):
+    try:
+        t = time.time()
+        values, labels = inference.inference(MODEL, LB, files)
+        print(time.time() - t)
+        response = {
+            "success": True,
+            "values": values,
+            "labels": labels,
+            "message": "Predicted successfully."
+        }
+    except Exception:
+        response = {"success": False, "message": "Server error! Contact support."}
+    
+    return response
 
 
-@app.route("/")
-def index():
-    return json.dumps({"success": True})
-
-
-if __name__ == '__main__':
-    app.run()
+if __name__ == "__main__":
+    uvicorn.run(app)
