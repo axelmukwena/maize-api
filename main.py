@@ -10,9 +10,6 @@ from fastapi import UploadFile, FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 import numpy as np
 from PIL import Image
-from urllib.request import urlopen
-import requests
-import cloudpickle as cp
 import json
 
 os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices'
@@ -28,25 +25,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-MODEL = None
-LB = None
 
-
-def load_model():
-    global MODEL
-    global LB
-    # Load model and classes
-    # MODEL = keras.models.load_model("model/", compile=False)
-    MODEL_URL = "http://d34fuzzibpgim5.cloudfront.net/model.pkl"
-    mod = cp.load(urlopen(MODEL_URL))
-    MODEL = keras.models.load_model(mod, compile=False)
-    # r = requests.get(MODEL_URL, allow_redirects=True)
-    # with open(r, 'rb') as f:
-    #     mod = pickle.load(f)
-    #     MODEL = keras.models.load_model(mod, compile=False)
-        
-    with open("lb.pickle", 'rb') as f:
-        LB = pickle.load(f)
+# Load model and classes
+MODEL = keras.models.load_model("model/", compile=False)
+with open("lb.pickle", 'rb') as f:
+    LB = pickle.load(f)
 
 
 @app.get("/")
@@ -74,12 +57,5 @@ async def get_image(files: List[UploadFile]):
     return Response(content=json_data, media_type="application/json")
 
 
-# except Exception:
-#     response = {"success": False, "message": "Server error! Contact support."}
-
-# return response
-
-
 if __name__ == "__main__":
-    load_model()
     uvicorn.run(app)
